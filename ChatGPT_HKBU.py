@@ -24,7 +24,7 @@ class HKBU_ChatGPT():
             return 'Error:', response
 
 if __name__ == '__main__':
-    ChatGPT_test = HKBU_ChatGPT()
+    ChatGPT_test = HKBU_ChatGPT()   
 
     while True:
         user_input = input("Typing anything to ChatGPT:\t")
