@@ -82,7 +82,6 @@ def hello(update: Update, context: CallbackContext) -> None:
 		global redis1
 		logging.info(context.args[0])
 		msg = context.args[0]  # /hello keyword <-- this should store the keyword
-		redis1.incr(msg)
 
 		update.message.reply_text('Good day,' + msg + '!')
 
