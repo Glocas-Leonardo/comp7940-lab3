@@ -9,6 +9,7 @@ import os
 import logging
 import redis
 from ChatGPT_HKBU import HKBU_ChatGPT
+from Google_Route import Route
 
 global redis1
 def main():
@@ -37,6 +38,10 @@ def main():
 	chatgpt = HKBU_ChatGPT()
 	chatgpt_handler = MessageHandler(Filters.text & (~Filters.command), equiped_chatgpt)
 	dispatcher.add_handler(chatgpt_handler)
+
+	global google_route
+	google_route = Route()
+	dispatcher.add_handler(CommandHandler("route"), route)
 
 	# on different commands - answer in Telegram
 	dispatcher.add_handler(CommandHandler("add", add))
@@ -78,6 +83,25 @@ def add(update: Update, context: CallbackContext) -> None:
 
 	except (IndexError, ValueError):
 		update.message.reply_text('Usage: /add <keyword>')
+
+def route(update: Update, context: CallbackContext) -> None:
+	"""Send a message when the command /route is issued."""
+	try:
+		global redis1
+		global google_route
+		logging.info(context.args[0])
+		start_add = context.args[0]
+		logging.info(context.args[1])
+		end_add = context.args[1]
+		directions_result = google_route.query_route(start_add,end_add)
+		legs = directions_result[0]['legs']
+		for leg in legs:
+			Start_Address = leg['start_address']
+
+		update.message.reply_text('Start Address:' + Start_Address)
+
+	except (IndexError, ValueError):
+		update.message.reply_text('Usage: /route <start address> <end address>')
 
 def hello(update: Update, context: CallbackContext) -> None:
 	"""Send a message when the command /hello is issued."""
