@@ -41,7 +41,7 @@ def main():
 
 	global google_route
 	google_route = Route()
-	dispatcher.add_handler(CommandHandler("route"), route)
+	dispatcher.add_handler(CommandHandler("route", route))
 
 	# on different commands - answer in Telegram
 	dispatcher.add_handler(CommandHandler("add", add))
