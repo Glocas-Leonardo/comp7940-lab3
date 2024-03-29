@@ -10,12 +10,13 @@ import logging
 import redis
 from ChatGPT_HKBU import HKBU_ChatGPT
 from Google_Route import Route
+import json
 
 global redis1
 def main():
 	# Load your token and create an Updater for your Bot
-	# config = configparser.ConfigParser()
-	# config.read('config.ini')
+	config = configparser.ConfigParser()
+	config.read('config.ini')
 	# updater = Updater(token=(config['TELEGRAM']['ACCESS_TOKEN']), use_context=True)
 	updater = Updater(token=(os.environ['ACCESS_TOKEN']),use_context=True)
 	dispatcher = updater.dispatcher
@@ -23,7 +24,9 @@ def main():
 	redis1 = redis.Redis(host=(os.environ['HOST']),
 						 password=(os.environ['PASSWORD']),
 						 port=(os.environ['REDISPORT']))
-
+	# redis1 = redis.Redis(host=(config['REDIS']['HOST']),
+	# 					 password=(config['REDIS']['PASSWORD']),
+	# 					 port=(config['REDIS']['REDISPORT']))
 	# You can set this logging module,
 	# so you will know when and why things do not work as expected
 	logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -87,21 +90,38 @@ def add(update: Update, context: CallbackContext) -> None:
 def route(update: Update, context: CallbackContext) -> None:
 	"""Send a message when the command /route is issued."""
 	try:
-		global redis1
 		global google_route
-		logging.info(context.args[0])
-		start_add = context.args[0]
-		logging.info(context.args[1])
-		end_add = context.args[1]
-		directions_result = google_route.query_route(start_add,end_add)
-		legs = directions_result[0]['legs']
-		for leg in legs:
-			Start_Address = leg['start_address']
-
-		update.message.reply_text('Start Address:' + Start_Address)
+		i = 0
+		logging.info(context.args)
+		start_add, end_add = extract_addresses_from_context(context.args)
+		Start_Address,End_Address,Distance,Duration,Step = google_route.query_route(start_add,end_add)
+		if Start_Address is None:
+			update.message.reply_text('Your input maybe wrong, please check')
+		else:
+			# Step_json = json.dumps(Step, indent=4)
+			update.message.reply_text('Start Address: ' + Start_Address +
+								  	  '\nEnd Address: ' + End_Address +
+									  '\nDistance: ' + Distance +
+									  '\nDuration: ' + Duration)
+			for step in Step:
+				i += 1
+				if "description" in step:
+					update.message.reply_text('   Step'+ str(i) + '-' + step["description"])
+				elif "Bus Information" in step:
+					subway_info = step["Bus Information"]
+					update.message.reply_text("Bus informarion:\n")
+					for key, value in subway_info.items():
+						update.message.reply_text( key + ": " + str(value))
+					i -= 1
+				elif "Subway Information" in step:
+					subway_info = step["Subway Information"]
+					update.message.reply_text("Subway informarion:\n")
+					for key, value in subway_info.items():
+						update.message.reply_text( key + ": " + str(value))
+					i -= 1
 
 	except (IndexError, ValueError):
-		update.message.reply_text('Usage: /route <start address> <end address>')
+		update.message.reply_text('Usage: /route S: <start address> E: <end address>')
 
 def hello(update: Update, context: CallbackContext) -> None:
 	"""Send a message when the command /hello is issued."""
@@ -114,6 +134,27 @@ def hello(update: Update, context: CallbackContext) -> None:
 
 	except (IndexError, ValueError):
 		update.message.reply_text('Usage: /hello <keyword>')
+
+def extract_addresses_from_context(address_list):
+	start = ''
+	end = ''
+	start_flag = False
+	end_flag = False
+
+	for item in address_list:
+		if item.startswith("S:"):
+			start += item[len("S:"):].strip() + " "
+			start_flag = True
+		elif item.startswith("E:"):
+			end += item[len("E:"):].strip() + " "
+			end_flag = True
+			start_flag = False
+		elif start_flag:
+			start += item + ' '
+		elif end_flag:
+			end += item + ' '
+
+	return start.strip(), end.strip()
 
 if __name__ == '__main__':
 	main()
